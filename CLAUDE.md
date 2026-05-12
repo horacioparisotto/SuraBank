@@ -69,56 +69,83 @@ Memoria del proyecto y guía operativa para futuras sesiones de Claude Code.
 - [x] `git init` + commit inicial.
 - [x] Conectar al remoto `https://github.com/horacioparisotto/SuraBank.git` y push.
 
-### Fase 1 — Definir stack y scaffolding
+### Fase 1 — Scaffolding
 
-- [ ] Confirmar con el usuario el stack (sugerido: **Next.js 15 App Router + TypeScript + Tailwind + Prisma + SQLite/Postgres**, todo en un solo repo full-stack).
-- [ ] Scaffold del proyecto (Next + TS + Tailwind).
-- [ ] Configurar ESLint + Prettier (apunta al trofeo "¡Con calidad!").
-- [ ] Agregar fuentes Inter y Poppins (next/font).
-- [ ] Setup de testing (Vitest o Jest + Testing Library, apunta a trofeo "¡Inbugeable!").
+- [x] Stack confirmado (ver sección 3).
+- [ ] `create-next-app` con TS + Tailwind + App Router + ESLint.
+- [ ] Instalar Shadcn CLI + componentes base (button, input, card).
+- [ ] Configurar Prettier + lint-staged + Husky.
+- [ ] Agregar fuentes Inter y Poppins via `next/font`.
+- [ ] Setup Vitest + Testing Library + MSW.
+- [ ] Estructura de carpetas: `/app`, `/components`, `/lib`, `/prisma`, `/tests`.
 
 ### Fase 2 — Backend / API
 
+- [ ] Conectar PlanetScale (crear DB `surabank`, copiar connection string a `.env`).
 - [ ] Modelar DB con Prisma: `User`, `Card`, `Transaction`.
-- [ ] Seed con el usuario de prueba, 1 tarjeta Mastercard + 1 Visa, y >=5 transacciones.
-- [ ] Implementar `POST /surabank/login` (route handler en `app/surabank/login/route.ts`).
-- [ ] Implementar `GET /surabank/cards` con validación del header `Authorization`.
-- [ ] Implementar `GET /surabank/movements/last` (limit 5, ordenado por fecha desc).
-- [ ] Helper de auth para validar el token ficticio.
+- [ ] `prisma migrate` + seed (user de prueba, 1 Mastercard + 1 Visa, 6+ transacciones).
+- [ ] Helper `lib/auth.ts` para validar cookie httpOnly con token ficticio.
+- [ ] Setup Upstash Redis client (`lib/redis.ts`).
+- [ ] `POST /surabank/login` (validar credenciales, generar token, set cookie).
+- [ ] `GET /surabank/cards` (auth check, leer de Redis, fallback a DB, cachear).
+- [ ] `GET /surabank/movements/last` (auth check, limit 5, orden desc, cache).
+- [ ] Schemas Zod para todas las requests/responses.
 
 ### Fase 3 — Frontend (mobile-first)
 
 - [ ] Layout mobile-first siguiendo el Figma.
-- [ ] Página `/login` con form (email + password), manejo de errores.
-- [ ] Persistir token (localStorage o cookie httpOnly).
-- [ ] Página `/` (home) protegida: lista de tarjetas + últimos 5 movimientos.
-- [ ] Componente `CardItem` (issuer, lastDigits, balance, currency, expDate).
+- [ ] Provider de TanStack Query.
+- [ ] Página `/login` con form (RHF + Zod), manejo de errores.
+- [ ] Middleware de Next para proteger `/` (verificar cookie).
+- [ ] Página `/` (home): cards carousel + lista de últimos 5 movimientos.
+- [ ] Componente `CardItem` (issuer logo, lastDigits, balance, currency, expDate).
 - [ ] Componente `TransactionItem` (title, amount, transactionType, date).
-- [ ] Estados: loading, empty, error.
-- [ ] Logout.
+- [ ] Estados: loading (skeletons), empty, error.
+- [ ] Logout (clear cookie + redirect).
 
 ### Fase 4 — Trofeos
 
-- [ ] Animaciones (Framer Motion) en transiciones de página y tarjetas.
-- [ ] Sonidos sutiles en acciones clave (login OK, swipe de tarjetas).
-- [ ] Tests unitarios + integración hasta >70% cobertura.
-- [ ] Ideas de features extra: dark mode, swipe entre tarjetas, búsqueda de movimientos, gráfico de gastos.
+- [ ] Framer Motion: transición login→home, swipe cards, fade-in transactions.
+- [ ] use-sound: tap, login OK, swipe.
+- [ ] Tests: unit (lib/), integration (API routes con MSW), component (RTL). Meta: >70%.
+- [ ] Features extra (manija): dark mode, swipe entre tarjetas, gráfico de gastos por categoría.
 
 ### Fase 5 — Entrega
 
-- [ ] Deploy (Vercel recomendado por ser Next).
-- [ ] README final con: stack, cómo correr local, credenciales de prueba, link en vivo.
+- [ ] Deploy a Vercel (conectar repo, set env vars: DATABASE_URL, REDIS_URL, etc).
+- [ ] PlanetScale: promote branch a production.
+- [ ] README final: stack, setup local, credenciales de prueba, link en vivo, badges de cobertura.
 - [ ] Tag/release final.
 
 ---
 
-## 3. Decisiones pendientes (preguntar al usuario antes de codear)
+## 3. Decisiones tomadas
 
-1. **Stack:** ¿Next.js full-stack con Prisma + SQLite, o front separado del back?
-2. **UI library:** ¿Tailwind + Shadcn, NextUI, u otra?
-3. **Auth storage:** ¿localStorage (simple) o cookie httpOnly (más seguro)?
-4. **Deploy target:** ¿Vercel? ¿Otro?
-5. **Trofeos prioritarios:** ¿cuáles apuntar (calidad, tests, animaciones, sonidos, features extra)?
+**Motivación:** matchear el stack del puesto al que el usuario se postula (Next.js, React Native, MySQL, Redis, AWS/Vercel, TypeScript).
+
+| Capa | Elección |
+|------|----------|
+| Framework | **Next.js 15 (App Router) + TypeScript** — full-stack en un solo repo |
+| DB | **MySQL en PlanetScale** (free tier, serverless, branching tipo git) |
+| ORM | **Prisma** |
+| Cache | **Redis en Upstash** (free tier) — cachear `/cards` y `/movements/last` por token |
+| UI | **Tailwind + Shadcn** |
+| Fuentes | **Inter + Poppins** via `next/font` |
+| Animaciones | **Framer Motion** (trofeo ¡Magia!) |
+| Sonidos | **use-sound** (trofeo ¡Suena bien!) |
+| Lint/Format | **ESLint + Prettier + lint-staged + Husky** (trofeo ¡Con calidad!) |
+| Tests | **Vitest + Testing Library + MSW** — objetivo >70% cobertura (trofeo ¡Inbugeable!) |
+| Validación | **Zod** en request/response de API routes |
+| Data fetching cliente | **TanStack Query (React Query)** |
+| Auth storage | **Cookie httpOnly** (no localStorage) — más profesional |
+| Deploy | **Vercel** (front + API) + PlanetScale (DB) + Upstash (Redis) |
+
+### Trofeos a perseguir
+
+- [x] ¡Con calidad! — ESLint + Prettier
+- [x] ¡Magia! — Framer Motion
+- [x] ¡Inbugeable! — Vitest >70%
+- [x] ¡Suena bien! — use-sound
 
 ---
 
