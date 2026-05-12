@@ -95,6 +95,7 @@ Memoria del proyecto y guía operativa para futuras sesiones de Claude Code.
 
 - [ ] Layout mobile-first siguiendo el Figma.
 - [ ] Provider de TanStack Query.
+- [ ] **`MobileOnlyGate`**: componente client que detecta viewport con `matchMedia('(max-width: 767px)')`. Si el viewport es mayor que mobile, renderiza un overlay full-screen estético (logo SuraBank + mensaje "Esta experiencia está diseñada para vista mobile. Achicá la ventana o abrí desde el celular.") en vez del contenido. Sin botón de resize (los browsers bloquean `window.resizeTo` en tabs normales — decisión tomada para evitar UX rota).
 - [ ] Página `/login` con form (RHF + Zod), manejo de errores.
 - [ ] Middleware de Next para proteger `/` (verificar cookie).
 - [ ] Página `/` (home): cards carousel + lista de últimos 5 movimientos.
