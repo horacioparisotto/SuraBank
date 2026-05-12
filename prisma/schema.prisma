@@ -1,0 +1,48 @@
+// SuraBank Prisma schema — SQLite local
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  name         String
+  password     String
+  token        String?       @unique
+  cards        Card[]
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+}
+
+model Card {
+  id         Int      @id @default(autoincrement())
+  issuer     String
+  name       String
+  expDate    String
+  lastDigits Int
+  balance    String
+  currency   String
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  title           String
+  subtitle        String
+  amount          String
+  transactionType String
+  date            DateTime
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, date])
+}

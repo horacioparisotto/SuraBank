@@ -27,11 +27,11 @@ Memoria del proyecto y guía operativa para futuras sesiones de Claude Code.
 
 ### Endpoints a implementar
 
-| Método | Ruta                          | Auth | Descripción                              |
-|--------|-------------------------------|------|------------------------------------------|
-| POST   | `/surabank/login`             | —    | Login, devuelve `{ name, token }`        |
-| GET    | `/surabank/cards`             | Bearer-like header `Authorization: token` | Lista de tarjetas (al menos 1 Mastercard + 1 Visa) |
-| GET    | `/surabank/movements/last`    | Bearer-like header `Authorization: token` | Últimos 5 movimientos                    |
+| Método | Ruta                       | Auth                                      | Descripción                                        |
+| ------ | -------------------------- | ----------------------------------------- | -------------------------------------------------- |
+| POST   | `/surabank/login`          | —                                         | Login, devuelve `{ name, token }`                  |
+| GET    | `/surabank/cards`          | Bearer-like header `Authorization: token` | Lista de tarjetas (al menos 1 Mastercard + 1 Visa) |
+| GET    | `/surabank/movements/last` | Bearer-like header `Authorization: token` | Últimos 5 movimientos                              |
 
 ### Entidades
 
@@ -81,14 +81,15 @@ Memoria del proyecto y guía operativa para futuras sesiones de Claude Code.
 
 ### Fase 2 — Backend / API
 
-- [ ] Conectar PlanetScale (crear DB `surabank`, copiar connection string a `.env`).
+- [ ] **Local: SQLite + Prisma** (decisión 2026-05-12 — no bloquearse en setup de cuentas; migración a MySQL/PlanetScale queda para deploy).
 - [ ] Modelar DB con Prisma: `User`, `Card`, `Transaction`.
-- [ ] `prisma migrate` + seed (user de prueba, 1 Mastercard + 1 Visa, 6+ transacciones).
+- [ ] `prisma migrate` + seed (user `user@suragaming.com` / `SURA2026!$` con name "Carlos", 1 Mastercard + 1 Visa, 6+ transacciones mezclando SUS/CASH_IN/CASH_OUT).
 - [ ] Helper `lib/auth.ts` para validar cookie httpOnly con token ficticio.
-- [ ] Setup Upstash Redis client (`lib/redis.ts`).
-- [ ] `POST /surabank/login` (validar credenciales, generar token, set cookie).
-- [ ] `GET /surabank/cards` (auth check, leer de Redis, fallback a DB, cachear).
-- [ ] `GET /surabank/movements/last` (auth check, limit 5, orden desc, cache).
+- [ ] ~~Setup Upstash Redis client~~ → **pospuesto a Fase 5** (deploy).
+- [ ] `POST /surabank/login` (validar credenciales, generar token, set cookie, devolver `{ name, token }`).
+- [ ] `GET /surabank/cards` (auth check, devolver todas las tarjetas del user).
+- [ ] `GET /surabank/movements/last` (auth check, limit 5, orden desc).
+- [ ] `GET /surabank/movements` (auth check, todas las transacciones — usado por pantalla /movements).
 - [ ] Schemas Zod para todas las requests/responses.
 
 ### Fase 3 — Frontend (mobile-first)
@@ -98,9 +99,11 @@ Memoria del proyecto y guía operativa para futuras sesiones de Claude Code.
 - [ ] **`MobileOnlyGate`**: componente client que detecta viewport con `matchMedia('(max-width: 767px)')`. Si el viewport es mayor que mobile, renderiza un overlay full-screen estético (logo SuraBank + mensaje "Esta experiencia está diseñada para vista mobile. Achicá la ventana o abrí desde el celular.") en vez del contenido. Sin botón de resize (los browsers bloquean `window.resizeTo` en tabs normales — decisión tomada para evitar UX rota).
 - [ ] Página `/login` con form (RHF + Zod), manejo de errores.
 - [ ] Middleware de Next para proteger `/` (verificar cookie).
-- [ ] Página `/` (home): cards carousel + lista de últimos 5 movimientos.
-- [ ] Componente `CardItem` (issuer logo, lastDigits, balance, currency, expDate).
-- [ ] Componente `TransactionItem` (title, amount, transactionType, date).
+- [ ] Página `/` (home): header "Hola {name}" + lupa + campana (decorativa), cards carousel con swipe, lista de últimos 5 movimientos, tab bar inferior.
+- [ ] Página `/movements`: lista completa de transacciones (accesible desde lupa del header en home).
+- [ ] Componente `CardItem` (issuer logo, lastDigits, balance, currency, expDate, fondo azul/coral según index).
+- [ ] Componente `TransactionItem` (title, subtitle según transactionType, amount coloreado, ícono con fondo de color según tipo: SUS violeta / CASH_IN verde / CASH_OUT naranja).
+- [ ] Componente `TabBar` (Home / Movements / Logout).
 - [ ] Estados: loading (skeletons), empty, error.
 - [ ] Logout (clear cookie + redirect).
 
@@ -124,22 +127,23 @@ Memoria del proyecto y guía operativa para futuras sesiones de Claude Code.
 
 **Motivación:** matchear el stack del puesto al que el usuario se postula (Next.js, React Native, MySQL, Redis, AWS/Vercel, TypeScript).
 
-| Capa | Elección |
-|------|----------|
-| Framework | **Next.js 15 (App Router) + TypeScript** — full-stack en un solo repo |
-| DB | **MySQL en PlanetScale** (free tier, serverless, branching tipo git) |
-| ORM | **Prisma** |
-| Cache | **Redis en Upstash** (free tier) — cachear `/cards` y `/movements/last` por token |
-| UI | **Tailwind + Shadcn** |
-| Fuentes | **Inter + Poppins** via `next/font` |
-| Animaciones | **Framer Motion** (trofeo ¡Magia!) |
-| Sonidos | **use-sound** (trofeo ¡Suena bien!) |
-| Lint/Format | **ESLint + Prettier + lint-staged + Husky** (trofeo ¡Con calidad!) |
-| Tests | **Vitest + Testing Library + MSW** — objetivo >70% cobertura (trofeo ¡Inbugeable!) |
-| Validación | **Zod** en request/response de API routes |
-| Data fetching cliente | **TanStack Query (React Query)** |
-| Auth storage | **Cookie httpOnly** (no localStorage) — más profesional |
-| Deploy | **Vercel** (front + API) + PlanetScale (DB) + Upstash (Redis) |
+| Capa                  | Elección                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| Framework             | **Next.js 15 (App Router) + TypeScript** — full-stack en un solo repo              |
+| DB (local)            | **SQLite + Prisma** — sin setup de cuentas, dev loop rápido                        |
+| DB (deploy)           | **MySQL en PlanetScale** (Fase 5, opcional)                                        |
+| ORM                   | **Prisma**                                                                         |
+| Cache                 | **Redis en Upstash** — pospuesto a Fase 5 (deploy)                                 |
+| UI                    | **Tailwind + Shadcn**                                                              |
+| Fuentes               | **Inter + Poppins** via `next/font`                                                |
+| Animaciones           | **Framer Motion** (trofeo ¡Magia!)                                                 |
+| Sonidos               | **use-sound** (trofeo ¡Suena bien!)                                                |
+| Lint/Format           | **ESLint + Prettier + lint-staged + Husky** (trofeo ¡Con calidad!)                 |
+| Tests                 | **Vitest + Testing Library + MSW** — objetivo >70% cobertura (trofeo ¡Inbugeable!) |
+| Validación            | **Zod** en request/response de API routes                                          |
+| Data fetching cliente | **TanStack Query (React Query)**                                                   |
+| Auth storage          | **Cookie httpOnly** (no localStorage) — más profesional                            |
+| Deploy                | **Vercel** (front + API) + PlanetScale (DB) + Upstash (Redis)                      |
 
 ### Trofeos a perseguir
 
