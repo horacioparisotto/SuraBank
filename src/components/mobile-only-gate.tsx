@@ -49,7 +49,8 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
     <>
       {children}
 
-      {/* Splash brevísimo SOLO en el primer paint en desktop */}
+      {/* Splash brevísimo SOLO en el primer paint en desktop:
+          gradiente puro + barra de progreso, sin contenido que pueda re-acomodarse. */}
       <AnimatePresence>
         {showSplashOverlay && (
           <motion.div
@@ -57,16 +58,20 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
             initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a]"
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a] pb-16"
           >
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-              className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm"
-            >
-              <Smartphone className="h-10 w-10 text-white" aria-hidden />
-            </motion.div>
+            <div className="h-0.5 w-40 overflow-hidden rounded-full bg-white/15">
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: "100%" }}
+                transition={{
+                  duration: SPLASH_DURATION_MS / 1000,
+                  ease: "easeInOut",
+                }}
+                className="h-full w-1/2 bg-white/70"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
