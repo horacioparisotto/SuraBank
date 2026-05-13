@@ -1,6 +1,6 @@
 # SuraBank — Test de Evaluación Técnica
 
-> **Implementación de Horacio Parisotto** — Web Mobile full-stack con Next.js 16 (App Router) + TypeScript + Tailwind v4 + Shadcn + Prisma + SQLite.
+> **Implementación de Horacio Parisotto** — Web Mobile full-stack con Next.js 16 (App Router) + TypeScript + Tailwind v4 + Shadcn + Prisma (SQLite local / Turso libSQL en producción) + Upstash Redis (cache).
 
 ## Setup local
 
@@ -36,13 +36,15 @@ Si la ventana es más grande, aparece un overlay estético pidiendo cambiar a vi
 - **Framework:** Next.js 16 (App Router, Turbopack, React 19)
 - **UI:** Tailwind v4 + Shadcn (base-nova preset) + Lucide icons
 - **Auth:** Cookie httpOnly + middleware (`src/proxy.ts`, convención Next 16)
-- **DB:** SQLite + Prisma 6
+- **DB local:** SQLite + Prisma 6
+- **DB producción:** Turso (libSQL serverless) via `@prisma/adapter-libsql` — el mismo schema funciona en ambos
+- **Cache producción:** Upstash Redis (60s TTL en `/cards` y `/movements/last`, invalidación en logout)
 - **Data fetching:** TanStack Query
 - **Validación:** Zod
 - **Forms:** React Hook Form + zodResolver
 - **Animaciones:** Framer Motion (🏆 ¡Magia!)
 - **Sonidos:** use-sound (🏆 ¡Suena bien!)
-- **Tests:** Vitest + Testing Library + happy-dom (🏆 ¡Inbugeable! — **93.85% statements / 95.20% lines** ≫ 70%)
+- **Tests:** Vitest + Testing Library + happy-dom (🏆 ¡Inbugeable! — **94.52% statements / 95.69% lines** ≫ 70%)
 - **Calidad:** ESLint + Prettier + lint-staged + Husky (🏆 ¡Con calidad!)
 
 ### Rutas
@@ -67,11 +69,57 @@ Las APIs aceptan tanto la cookie httpOnly como el header `Authorization: <token>
 - **Swipe carousel** entre tarjetas con dots indicator y sonido en cada cambio.
 - **MobileOnlyGate**: overlay estético si el viewport es > 767px.
 
-### Notas de migración para deploy (Fase 5, opcional)
+### Deploy a Vercel (paso a paso)
 
-- DB: SQLite local → MySQL en PlanetScale (cambiar `provider` en `schema.prisma`).
-- Cache: agregar Upstash Redis en endpoints `/cards` y `/movements/last`.
-- Deploy: Vercel con env vars `DATABASE_URL` + `AUTH_COOKIE_NAME`.
+El código ya soporta DB cloud y cache. Activá ambos seteando env vars; si faltan, hace fallback transparente (cache desactivado, DB local).
+
+#### 1) Turso (libSQL serverless SQLite — free tier generoso)
+
+1. Creá cuenta en https://turso.tech
+2. Instalá la CLI: `curl -sSfL https://get.tur.so/install.sh | bash`
+3. Login: `turso auth signup` (o `login`)
+4. Creá la DB:
+   ```bash
+   turso db create surabank
+   turso db show surabank --url               # → libsql://surabank-<tu-org>.turso.io
+   turso db tokens create surabank             # → eyJhbGciOiJF...
+   ```
+5. Aplicá el schema:
+   ```bash
+   TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..." \
+     DATABASE_URL="file:./dummy.db" \
+     pnpm exec prisma db push
+   ```
+6. Sembrá la DB remota:
+   ```bash
+   TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..." \
+     pnpm db:seed:remote
+   ```
+
+#### 2) Upstash Redis (opcional, free tier)
+
+1. Creá cuenta en https://upstash.com
+2. Create Database → Region cercano a tu Vercel region.
+3. Copiá `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
+
+> Si no setás estas vars, la app sigue funcionando — el cache layer es best-effort.
+
+#### 3) Vercel
+
+1. Conectá el repo en https://vercel.com/new
+2. Framework: Next.js (auto-detect).
+3. Build command default: `next build`.
+4. **Environment Variables** (Production + Preview):
+   ```
+   DATABASE_URL=file:./dummy.db
+   AUTH_COOKIE_NAME=surabank_token
+   TURSO_DATABASE_URL=libsql://surabank-<tu-org>.turso.io
+   TURSO_AUTH_TOKEN=<token>
+   UPSTASH_REDIS_REST_URL=https://<id>.upstash.io       # opcional
+   UPSTASH_REDIS_REST_TOKEN=<token>                     # opcional
+   ```
+   `DATABASE_URL` es dummy en prod — Prisma lo necesita en build time, pero el cliente usa el adapter libSQL si `TURSO_DATABASE_URL` está presente.
+5. Deploy. Primera URL queda live en `https://surabank-*.vercel.app`.
 
 ---
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserFromRequest } from "@/lib/auth";
+import { cacheGet, cacheSet, cacheKeys } from "@/lib/cache";
 import type { TransactionDTO, TransactionType } from "@/lib/schemas";
 
 export async function GET(req: NextRequest) {
@@ -8,6 +9,13 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
+
+  const key = cacheKeys.movementsLast(user.id);
+  const cached = await cacheGet<TransactionDTO[]>(key);
+  if (cached) {
+    return NextResponse.json(cached, { headers: { "x-cache": "HIT" } });
+  }
+
   const txs = await prisma.transaction.findMany({
     where: { userId: user.id },
     orderBy: { date: "desc" },
@@ -21,5 +29,7 @@ export async function GET(req: NextRequest) {
     transactionType: t.transactionType as TransactionType,
     date: t.date.toISOString(),
   }));
-  return NextResponse.json(dto);
+
+  await cacheSet(key, dto);
+  return NextResponse.json(dto, { headers: { "x-cache": "MISS" } });
 }
