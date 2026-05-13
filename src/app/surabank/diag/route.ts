@@ -1,38 +1,50 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@libsql/client/web";
 
 export const dynamic = "force-dynamic";
 
+const SQL = "SELECT count(*) as cnt FROM User";
+
+async function tryEndpoint(url: string, token: string) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      requests: [{ type: "execute", stmt: { sql: SQL } }],
+    }),
+  });
+  const text = await res.text();
+  return { status: res.status, body: text.slice(0, 500) };
+}
+
 export async function GET() {
-  const url = process.env.TURSO_DATABASE_URL;
+  const rawUrl = process.env.TURSO_DATABASE_URL;
   const token = process.env.TURSO_AUTH_TOKEN;
 
-  if (!url) {
-    return NextResponse.json(
-      { stage: "env", error: "TURSO_DATABASE_URL no seteada" },
-      { status: 500 },
-    );
+  if (!rawUrl || !token) {
+    return NextResponse.json({ stage: "env", url: !!rawUrl, token: !!token }, { status: 500 });
   }
 
+  const httpsBase = rawUrl.replace(/^libsql:\/\//, "https://");
   try {
-    const client = createClient({ url, authToken: token });
-    const result = await client.execute({
-      sql: "SELECT count(*) as cnt FROM User",
-      args: [],
-    });
+    const v2 = await tryEndpoint(`${httpsBase}/v2/pipeline`, token);
+    const v3 = await tryEndpoint(`${httpsBase}/v3/pipeline`, token);
     return NextResponse.json({
-      stage: "libsql-direct-ok",
-      tursoUrl: url,
-      tokenLength: token?.length ?? 0,
-      result: result.rows,
-      libsqlClientVersion: "@libsql/client/web@0.17.3",
+      stage: "raw-fetch-test",
+      tursoUrl: rawUrl,
+      httpsBase,
+      tokenLength: token.length,
+      tokenPrefix: token.slice(0, 24),
+      tokenSuffix: token.slice(-24),
+      v2,
+      v3,
     });
   } catch (e) {
     return NextResponse.json(
       {
-        stage: "libsql-direct-failed",
-        tursoUrl: url,
-        tokenLength: token?.length ?? 0,
+        stage: "raw-fetch-failed",
         error: e instanceof Error ? e.message : String(e),
         stack: e instanceof Error ? e.stack : undefined,
       },
