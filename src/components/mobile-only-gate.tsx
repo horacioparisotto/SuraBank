@@ -8,13 +8,19 @@ const MOBILE_QUERY = "(max-width: 767px)";
 
 export function MobileOnlyGate({ children }: { children: ReactNode }) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  // Solo animamos cuando el viewport CAMBIA, no en el primer paint.
+  const [hasChanged, setHasChanged] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribe to MediaQueryList on mount
+    setIsMobile(mq.matches);
+    const onChange = () => {
+      setHasChanged(true);
+      setIsMobile(mq.matches);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, []);
 
   // Bloquear scroll del body mientras el overlay está visible
@@ -38,7 +44,7 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
             key="mobile-gate"
             role="alert"
             aria-live="polite"
-            initial={{ opacity: 0 }}
+            initial={hasChanged ? { opacity: 0 } : false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -46,7 +52,7 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
           >
             <div className="flex flex-col items-center gap-3">
               <motion.div
-                initial={{ scale: 0.85 }}
+                initial={hasChanged ? { scale: 0.85 } : false}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
                 className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm"
