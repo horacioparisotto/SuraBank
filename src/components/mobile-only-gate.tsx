@@ -117,9 +117,9 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
               {showContent && (
                 <motion.div
                   key="gate-content"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
                   className="flex flex-col items-center gap-8"
                 >
                   <div className="flex flex-col items-center gap-3">
