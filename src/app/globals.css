@@ -95,3 +95,16 @@
 .font-display {
   font-family: var(--font-display);
 }
+
+/* Loading bar para el overlay inicial pre-hidratación de React */
+@keyframes loading-bar-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.loading-bar {
+  animation: loading-bar-slide 0.9s ease-in-out infinite;
+}

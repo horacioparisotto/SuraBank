@@ -7,18 +7,28 @@ import { Smartphone } from "lucide-react";
 const MOBILE_QUERY = "(max-width: 767px)";
 const SPLASH_DURATION_MS = 450;
 
+/**
+ * Wrapper que muestra un overlay si el viewport NO es mobile.
+ *
+ * Problema que resuelve: el server SSR no sabe el viewport. Si dependemos solo
+ * del `useEffect`, el browser pinta la página de login antes de que React
+ * decida mostrar el overlay → flash blanco horrible.
+ *
+ * Solución: un overlay-CSS inicial siempre presente que se oculta vía media query
+ * en mobile. React, después de montar, toma el control y muestra el splash + gate
+ * según el viewport real.
+ */
 export function MobileOnlyGate({ children }: { children: ReactNode }) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
-  // Solo animamos el contenido cuando el viewport CAMBIA, no en el primer paint.
   const [hasChanged, setHasChanged] = useState(false);
-  // Tapa el primer paint en desktop con un splash brevísimo para evitar
-  // el "snap" cuando los hijos del overlay se montan después del effect.
   const [showSplash, setShowSplash] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribe to MediaQueryList on mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribe on mount
     setIsMobile(mq.matches);
+    setMounted(true);
     const onChange = () => {
       setHasChanged(true);
       setIsMobile(mq.matches);
@@ -31,7 +41,7 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Bloquear scroll del body mientras el overlay está visible
+  // Bloquear scroll del body mientras el overlay está visible (desktop)
   useEffect(() => {
     if (isMobile === false) {
       const prev = document.body.style.overflow;
@@ -43,13 +53,28 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
   }, [isMobile]);
 
   const showOverlay = isMobile === false;
-  // El contenido (logo + textos) aparece después del splash, solo en primer paint desktop.
-  // Si hubo cambio de viewport, no hay splash y el contenido aparece de una con fade.
   const showContent = showOverlay && (hasChanged || !showSplash);
 
   return (
     <>
       {children}
+
+      {/* Overlay-CSS inicial: SIEMPRE en el DOM, pero solo visible si !mobile via media query.
+          Esto cubre el primer paint antes de que React decida.
+          Cuando `mounted` se vuelve true (después del effect), React toma el control con
+          AnimatePresence y este nodo desaparece — la transición es seamless porque el splash
+          de React renderiza el mismo gradiente y texto en el mismo lugar. */}
+      {!mounted && (
+        <div
+          aria-hidden
+          className="fixed inset-0 z-50 hidden flex-col items-center justify-center gap-4 bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a] text-white md:flex"
+        >
+          <p className="text-xs tracking-[0.3em] text-white/70 uppercase">Cargando</p>
+          <div className="h-0.5 w-40 overflow-hidden rounded-full bg-white/15">
+            <div className="loading-bar h-full w-1/2 bg-white/70" />
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {showOverlay && (
@@ -63,7 +88,6 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
             transition={{ duration: 0.35, ease: "easeOut" }}
             className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a] px-8 text-center text-white"
           >
-            {/* Splash: texto + barra de progreso centrados, solo durante el primer paint desktop */}
             <AnimatePresence>
               {!showContent && (
                 <motion.div
@@ -89,7 +113,6 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
               )}
             </AnimatePresence>
 
-            {/* Contenido del gate: aparece después del splash, o de una si hubo cambio de viewport */}
             <AnimatePresence>
               {showContent && (
                 <motion.div
