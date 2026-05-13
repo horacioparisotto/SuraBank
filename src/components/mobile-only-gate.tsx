@@ -86,7 +86,7 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a] px-8 text-center text-white"
+            className="fixed inset-0 z-50 bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a] px-8 text-center text-white"
           >
             <AnimatePresence>
               {!showContent && (
@@ -95,7 +95,7 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
                   initial={false}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex flex-col items-center gap-4"
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-4"
                 >
                   <p className="text-xs tracking-[0.3em] text-white/70 uppercase">Cargando</p>
                   <div className="h-0.5 w-40 overflow-hidden rounded-full bg-white/15">
@@ -120,7 +120,7 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="flex flex-col items-center gap-8"
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-8"
                 >
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm">
