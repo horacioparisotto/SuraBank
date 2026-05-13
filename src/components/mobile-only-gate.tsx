@@ -5,11 +5,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
 
 const MOBILE_QUERY = "(max-width: 767px)";
+const SPLASH_DURATION_MS = 400;
 
 export function MobileOnlyGate({ children }: { children: ReactNode }) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   // Solo animamos cuando el viewport CAMBIA, no en el primer paint.
   const [hasChanged, setHasChanged] = useState(false);
+  // Tapa el primer paint en desktop con un splash brevísimo para evitar
+  // el "snap" cuando los hijos del overlay se montan después del effect.
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
@@ -20,11 +24,14 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
       setIsMobile(mq.matches);
     };
     mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    const t = setTimeout(() => setShowSplash(false), SPLASH_DURATION_MS);
+    return () => {
+      mq.removeEventListener("change", onChange);
+      clearTimeout(t);
+    };
   }, []);
 
   // Bloquear scroll del body mientras el overlay está visible
-  // (oculta scrollbar lateral en desktop sin esconderlo globalmente).
   useEffect(() => {
     if (isMobile === false) {
       const prev = document.body.style.overflow;
@@ -35,11 +42,37 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
     }
   }, [isMobile]);
 
+  const showOverlay = isMobile === false;
+  const showSplashOverlay = showSplash && showOverlay && !hasChanged;
+
   return (
     <>
       {children}
+
+      {/* Splash brevísimo SOLO en el primer paint en desktop */}
       <AnimatePresence>
-        {isMobile === false && (
+        {showSplashOverlay && (
+          <motion.div
+            key="mobile-gate-splash"
+            initial={false}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a]"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm"
+            >
+              <Smartphone className="h-10 w-10 text-white" aria-hidden />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showOverlay && (
           <motion.div
             key="mobile-gate"
             role="alert"
