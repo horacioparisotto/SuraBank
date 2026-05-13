@@ -1,270 +1,255 @@
-# SuraBank — Test de Evaluación Técnica
+# SuraBank
 
-> **Implementación de Horacio Parisotto** — Web Mobile full-stack con Next.js 16 (App Router) + TypeScript + Tailwind v4 + Shadcn + Prisma (SQLite local / Turso libSQL en producción) + Upstash Redis (cache).
+**Web Mobile full-stack** para el challenge técnico de SuraGaming.
+Implementado por Horacio Parisotto.
 
-## Setup local
+🔗 **Live:** https://sura-bank.vercel.app
+🐙 **Repo:** https://github.com/horacioparisotto/SuraBank
 
-```bash
-pnpm install
-pnpm db:setup        # corre la migración Prisma + seed (crea user@suragaming.com / SURA2026!$)
-pnpm dev             # http://localhost:3000
-```
+Para verla bien tiene que ser en vista mobile (menos de 768 px de ancho).
+Si la abrís en desktop te aparece un overlay pidiéndote que cambies a vista mobile —
+es a propósito, parte del scope dice "Web Mobile".
 
-Abrí la URL en una ventana **menor a 768 px de ancho** (DevTools → device toolbar, o desde el celular).
-Si la ventana es más grande, aparece un overlay estético pidiendo cambiar a vista mobile.
-
-### Credenciales de prueba
+## Credenciales de prueba
 
 - **Email:** `user@suragaming.com`
 - **Password:** `SURA2026!$`
 
-### Scripts
+---
 
-| Comando              | Qué hace                              |
-| -------------------- | ------------------------------------- |
-| `pnpm dev`           | Dev server (Turbopack)                |
-| `pnpm build`         | Build producción                      |
-| `pnpm test`          | Corre Vitest una vez                  |
-| `pnpm test:coverage` | Reporte de cobertura (objetivo ≥ 70%) |
-| `pnpm db:setup`      | Migra DB + ejecuta seed               |
-| `pnpm prisma:reset`  | Borra y re-crea la DB local           |
-| `pnpm format`        | Prettier sobre todo el repo           |
-| `pnpm lint`          | ESLint                                |
+## Por qué este stack
 
-### Stack
+Antes de tirar código me senté a pensar qué herramientas iban a dar mejor resultado para
+este challenge específico, considerando que se evalúa:
 
-- **Framework:** Next.js 16 (App Router, Turbopack, React 19)
-- **UI:** Tailwind v4 + Shadcn (base-nova preset) + Lucide icons
-- **Auth:** Cookie httpOnly + middleware (`src/proxy.ts`, convención Next 16)
-- **DB local:** SQLite + Prisma 6
-- **DB producción:** Turso (libSQL serverless) via `@prisma/adapter-libsql` — el mismo schema funciona en ambos
-- **Cache producción:** Upstash Redis (60s TTL en `/cards` y `/movements/last`, invalidación en logout)
-- **Data fetching:** TanStack Query
-- **Validación:** Zod
-- **Forms:** React Hook Form + zodResolver
-- **Animaciones:** Framer Motion (🏆 ¡Magia!)
-- **Sonidos:** use-sound (🏆 ¡Suena bien!)
-- **Tests:** Vitest + Testing Library + happy-dom (🏆 ¡Inbugeable! — **94.52% statements / 95.69% lines** ≫ 70%)
-- **Calidad:** ESLint + Prettier + lint-staged + Husky (🏆 ¡Con calidad!)
+- Maestría técnica.
+- Capacidad de armar un producto end-to-end.
+- Conexión a una DB relacional con ORM.
+- Tres trofeos opcionales que son fácilmente alcanzables si elegís bien el stack.
 
-### Rutas
+Y también consideré el contexto: el rol al que apunto usa **Next.js, React Native,
+MySQL, Redis, AWS/Vercel, TypeScript**. Decidí matchear esto lo más posible para que el
+challenge también funcionara como "muestra de cómo trabajo en el stack que usan ustedes".
 
-| Tipo | Path                           | Descripción                                                                                        |
-| ---- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
-| Page | `/login`                       | Form de login con validación Zod                                                                   |
-| Page | `/`                            | Home: header, carrusel de tarjetas, últimos 5 movimientos, tab bar                                 |
-| Page | `/movements`                   | Lista completa de movimientos (accesible desde la 🔍 del home) con búsqueda y agrupación por fecha |
-| API  | `POST /surabank/login`         | Valida credenciales, setea cookie httpOnly, devuelve `{ name, token }`                             |
-| API  | `POST /surabank/logout`        | Invalida token y borra cookie                                                                      |
-| API  | `GET /surabank/cards`          | Tarjetas del usuario (1 Mastercard + 1 Visa por seed)                                              |
-| API  | `GET /surabank/movements/last` | Últimos 5 movimientos, orden desc                                                                  |
-| API  | `GET /surabank/movements`      | Todos los movimientos del usuario                                                                  |
+### Framework: **Next.js 16 (App Router) + TypeScript**
 
-Las APIs aceptan tanto la cookie httpOnly como el header `Authorization: <token>` (cumple lo pedido en el enunciado).
+Elegí Next.js full-stack en lugar de Next + Node API separados por dos razones: (1) menos
+overhead de infra para un challenge, y (2) las API Routes del App Router me daban todo
+lo que necesitaba (auth, validación, conexión a DB) sin tener que mantener un segundo proceso.
+Turbopack ya está estable en build/dev así que lo dejé activado.
 
-### Manija extra
+### UI: **Tailwind + Shadcn (base-nova) + Lucide**
 
-- **Pantalla `/movements`** con búsqueda y agrupación por fecha.
-- **Tab bar** inferior (Home / Movements / Logout).
-- **Swipe carousel** entre tarjetas con dots indicator y sonido en cada cambio.
-- **MobileOnlyGate**: overlay estético si el viewport es > 767px.
+Tailwind fue elección directa por velocidad. Shadcn me dio componentes accesibles
+copiados al proyecto (no es una dependencia opaca, podés modificarlos) y los tokens
+de diseño los redefiní para matchear el Figma (azul `#1e40ff`, coral para la segunda
+tarjeta, colores específicos por tipo de transacción).
 
-### Deploy a Vercel (paso a paso)
+### DB: **SQLite local + Turso (libSQL serverless) en prod, con Prisma 6**
 
-El código soporta DB cloud (Turso) y cache (Upstash). Si las env vars no están seteadas, hace fallback transparente a SQLite local sin cache — no rompe.
+La consigna dice "idealmente DB relacional + ORM". Hice los dos. SQLite + Prisma para
+dev (sin setup de cuentas, dev loop rápido), y Turso para prod porque:
 
-#### 1) Turso (libSQL serverless SQLite, free tier)
+- Vercel Functions tienen filesystem read-only — SQLite local no sirve en runtime.
+- Turso es básicamente SQLite serverless con HTTP API. Mismo schema, mismo Prisma,
+  cero adaptación de tipos.
+- Free tier real (a diferencia de PlanetScale que dejó de tener tier gratis).
+
+El cliente Prisma detecta `TURSO_DATABASE_URL` en runtime y usa
+`@prisma/adapter-libsql/web` automáticamente. Si no hay env vars de Turso, cae a SQLite
+local. Eso significa que el mismo código funciona idéntico en dev y prod.
+
+> **Nota técnica del deploy:** `@libsql/client@0.17.x` rompe contra Turso reciente
+> (regresión conocida). Fijé `@libsql/client@0.15.15` que es la última versión estable.
+
+### Auth: **Cookie httpOnly + token ficticio**
+
+La consigna acepta token ficticio (sin OAuth/JWT real). Lo guardo en una cookie
+httpOnly + sameSite=lax, no en localStorage. Es lo profesional: el cliente no puede
+acceder al token desde JS, baja el riesgo de XSS.
+
+Los endpoints `/cards` y `/movements/last` aceptan **tanto la cookie como el header
+`Authorization: token`** — el enunciado pide el header, lo cumplo ahí, pero la app
+real usa cookie.
+
+### Cache: **Upstash Redis (opcional)**
+
+Cacheo `/cards` y `/movements/last` por user con TTL de 60s, invalido en logout.
+El header `x-cache: HIT | MISS` permite verificar que funciona. Si no hay env vars de
+Upstash, el cache layer hace fallback silencioso a DB — nunca rompe.
+
+### Forms: **React Hook Form + Zod**
+
+RHF + zodResolver es la combinación más limpia que conozco: una sola fuente de verdad
+para el shape, mensajes de error tipados, sin re-renders innecesarios. Los mismos
+schemas se reusan en el lado del server para validar requests entrantes.
+
+### Data fetching: **TanStack Query**
+
+Para invalidación, loading states, error states y refetch en una sola API. Es overkill
+para 3 endpoints, pero refleja cómo escalaría la app con más data.
+
+### Animaciones y sonidos: **Framer Motion + use-sound**
+
+Los trofeos "¡Magia!" y "¡Suena bien!" requerían algo, así que:
+
+- **Framer Motion**: fade-in en transacciones al cargar, fade-in del form de login,
+  scale-in en el carrusel de tarjetas. Sutil, no intrusivo.
+- **use-sound**: tap, success, error y swipe. Implementación funcional. **Los archivos
+  MP3 en `public/sounds/` son placeholders silenciosos** porque no quise meter audio
+  con copyright. Reemplazándolos por sonidos reales, suenan inmediatamente.
+
+### Tests: **Vitest + Testing Library + happy-dom**
+
+Trofeo "¡Inbugeable!" pide >70%. Saqué **94.5% statements, 95.7% lines, 78 tests**.
+Cubrí: schemas Zod, utils, auth helpers, api-client, cache layer (Redis up + down),
+MobileOnlyGate (incluyendo reacción a resize), login-form (válido, inválido, error
+del servidor, error de red), todos los componentes UI y el proxy de auth.
+
+### Calidad: **ESLint + Prettier + lint-staged + Husky**
+
+Trofeo "¡Con calidad!". El pre-commit corre Prettier + ESLint sobre lo staged.
+No es muestra, es la red de seguridad real del repo.
+
+---
+
+## Cosas que agregué fuera del scope mínimo (manija)
+
+El enunciado pedía Login + Home con tarjetas + Home con últimos 5 movimientos. Agregué:
+
+- **`/movements`** — accesible desde la lupa del header en home. Lista completa de
+  transacciones con búsqueda en vivo (por título, subtítulo, tipo) y agrupación por
+  fecha. El enunciado mostraba la lupa en el Figma sin acción asignada — me pareció
+  obvio que tenía que llevar a algún lado.
+- **Tab bar inferior** (Home / Movimientos / Logout) — el Figma lo mostraba.
+- **Swipe carousel** entre tarjetas — el Figma mostraba una segunda tarjeta asomando,
+  así que la implementación natural era hacer el carousel funcional.
+- **MobileOnlyGate** — overlay azul con logo y mensaje si el viewport > 767px. El
+  scope dice "Web Mobile" así que es coherente bloquear desktop.
+- **Header `x-cache`** en las respuestas para que el evaluador pueda ver que el cache
+  funciona en producción.
+
+---
+
+## Stack en una tabla
+
+| Capa          | Elección                                                            |
+| ------------- | ------------------------------------------------------------------- |
+| Framework     | Next.js 16 (App Router, Turbopack, React 19) + TypeScript           |
+| UI            | Tailwind v4 + Shadcn (base-nova) + Lucide                           |
+| Auth          | Cookie httpOnly + token ficticio + middleware (Next 16 `proxy.ts`)  |
+| DB dev        | SQLite + Prisma 6                                                   |
+| DB prod       | Turso libSQL + Prisma 6 (driverAdapters) + `@libsql/client@0.15.15` |
+| Cache prod    | Upstash Redis (60s TTL, fallback transparente)                      |
+| Forms         | React Hook Form + Zod                                               |
+| Data fetching | TanStack Query                                                      |
+| Animaciones   | Framer Motion                                                       |
+| Sonidos       | use-sound (placeholders silenciosos en `public/sounds/`)            |
+| Tests         | Vitest + Testing Library + happy-dom — 94.5% cobertura              |
+| Calidad       | ESLint + Prettier + lint-staged + Husky                             |
+| Fuentes       | Inter + Poppins via `next/font`                                     |
+| Deploy        | Vercel + Turso + Upstash                                            |
+
+---
+
+## Cómo correrlo localmente
 
 ```bash
-curl -sSfL https://get.tur.so/install.sh | bash   # instala CLI
-turso auth signup                                  # cuenta (GitHub/Google)
+pnpm install
+pnpm db:setup        # migra Prisma + sembra DB local con user de prueba
+pnpm dev             # http://localhost:3000
+```
+
+Abrí http://localhost:3000 con la ventana en **< 768 px de ancho** (DevTools → device
+toolbar, o desde el celular).
+
+## Scripts útiles
+
+| Comando               | Qué hace                                                      |
+| --------------------- | ------------------------------------------------------------- |
+| `pnpm dev`            | Dev server (Turbopack)                                        |
+| `pnpm build`          | Build de producción (corre `prisma generate` automáticamente) |
+| `pnpm test`           | Vitest una vez                                                |
+| `pnpm test:coverage`  | Reporte de cobertura                                          |
+| `pnpm db:setup`       | Migra + seed local                                            |
+| `pnpm db:seed:remote` | Seed contra Turso (necesita `TURSO_*` en env)                 |
+| `pnpm prisma:reset`   | Borra y re-crea la DB local                                   |
+| `pnpm format`         | Prettier sobre todo                                           |
+| `pnpm lint`           | ESLint                                                        |
+
+## Rutas de la app
+
+| Tipo | Path                           | Descripción                                               |
+| ---- | ------------------------------ | --------------------------------------------------------- |
+| Page | `/login`                       | Form con validación Zod                                   |
+| Page | `/`                            | Home: header + carrusel + últimos 5 movimientos + tab bar |
+| Page | `/movements`                   | Lista completa de movimientos con búsqueda y agrupación   |
+| API  | `POST /surabank/login`         | Auth, devuelve `{ name, token }`                          |
+| API  | `POST /surabank/logout`        | Invalida token y borra cookie                             |
+| API  | `GET /surabank/cards`          | Tarjetas del usuario                                      |
+| API  | `GET /surabank/movements/last` | Últimos 5 movimientos                                     |
+| API  | `GET /surabank/movements`      | Todos los movimientos                                     |
+
+---
+
+## Deploy a Vercel (referencia, ya está hecho)
+
+### 1) Turso
+
+```bash
+curl -sSfL https://get.tur.so/install.sh | bash
+turso auth signup
 turso db create surabank
-turso db show surabank --url                       # → TURSO_DATABASE_URL
-turso db tokens create surabank                    # → TURSO_AUTH_TOKEN
-```
-
-Aplicá el schema y sembrá la DB remota (corré ambos desde la raíz del repo):
-
-```bash
+turso db show surabank --url           # → TURSO_DATABASE_URL
+turso db tokens create surabank        # → TURSO_AUTH_TOKEN
 turso db shell surabank < prisma/migrations/20260512234333_init/migration.sql
-
-TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..." \
-  pnpm db:seed:remote
+TURSO_DATABASE_URL="..." TURSO_AUTH_TOKEN="..." pnpm db:seed:remote
 ```
 
-> Nota: el script `db:seed:remote` usa el adapter `@prisma/adapter-libsql` y crea el user de prueba + 2 tarjetas + 8 transacciones.
+### 2) Upstash Redis (opcional)
 
-#### 2) Upstash Redis (opcional, free tier)
+https://upstash.com → Create Database → copiá `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
 
-1. https://upstash.com → Sign up → **Create Database**.
-2. Region cercano a la región de Vercel (ej: US-East).
-3. Copiá `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
+### 3) Vercel
 
-#### 3) Vercel
+Importá el repo → Framework: Next.js (auto) → Environment Variables:
 
-1. https://vercel.com/new → importá el repo `SuraBank`.
-2. Framework Preset: **Next.js** (auto).
-3. Root Directory: `./` (default).
-4. **Environment Variables** (Production + Preview):
+| Key                        | Value                                                        |
+| -------------------------- | ------------------------------------------------------------ |
+| `DATABASE_URL`             | `file:./dummy.db` (placeholder para Prisma en build time)    |
+| `AUTH_COOKIE_NAME`         | `surabank_token`                                             |
+| `TURSO_DATABASE_URL`       | `libsql://...turso.io`                                       |
+| `TURSO_AUTH_TOKEN`         | JWT (solo el token, sin comillas, sin `turso config set...`) |
+| `UPSTASH_REDIS_REST_URL`   | (opcional)                                                   |
+| `UPSTASH_REDIS_REST_TOKEN` | (opcional)                                                   |
 
-   | Key                        | Value                                         |
-   | -------------------------- | --------------------------------------------- |
-   | `DATABASE_URL`             | `file:./dummy.db`                             |
-   | `AUTH_COOKIE_NAME`         | `surabank_token`                              |
-   | `TURSO_DATABASE_URL`       | `libsql://surabank-<tu-org>.turso.io`         |
-   | `TURSO_AUTH_TOKEN`         | `eyJ...` (output de `turso db tokens create`) |
-   | `UPSTASH_REDIS_REST_URL`   | `https://<id>.upstash.io` (opcional)          |
-   | `UPSTASH_REDIS_REST_TOKEN` | `<token>` (opcional)                          |
-
-   > `DATABASE_URL` solo se usa para que Prisma se inicialice en build time; en runtime el cliente detecta `TURSO_DATABASE_URL` y usa el adapter libSQL automáticamente.
-
-5. **Deploy**. La URL queda live en `https://surabank-*.vercel.app`.
+Deploy.
 
 ---
 
-## Descripción del Desafío
+## Trofeos obtenidos
 
-Tu objetivo es construir la plataforma **SuraBank** en forma de una **Web Mobile**, la cual debe contener las siguientes historias de usuario:
-
-- **Login | Inicio de Sesión:**
-  - Como usuario de SuraBank, quiero poder iniciar sesión en la plataforma para acceder a mis tarjetas y movimientos.
-- **Home | Visualización de Tarjetas y Balances:**
-  - Como usuario de SuraBank, quiero poder ver todas mis tarjetas y sus respectivos balances para estar informado de mis gastos.
-- **Home | Visualización de Movimientos Recientes:**
-  - Como usuario de SuraBank, quiero poder ver los últimos 5 movimientos de mis tarjetas para mantenerme al día con mis transacciones recientes.
-
-A continuación, la especificación de la API y el diseño UI.
-
-- [Especificación API](https://www.notion.so/Especificaci-n-API-5d8f0216ce6d828d900e012a83251fdf?pvs=21)
-- [Diseño Figma](https://www.figma.com/design/VgRZx1RBY3N3SvrYtY1aK0/SuraChallenge-Figma?node-id=0-1&t=XZaJBOmdnI93xRQx-1)
-
-### Importante
-
-- Recomendamos usar herramientas como [Tailwind](https://tailwindcss.com/), [Shadcn](https://ui.shadcn.com/) o [NextUI](https://nextui.org/) para acelerar el desarrollo de la UIs. Si tenes mas cancha con herramientas como Styled Components o SCSS también es valido.
-- Dado que el challenge es **front y back**, podes usar el patron con el que mas te sientas comodo/a. Podes hacer el Front con Next/Remix y conectarte a un API externa con Node, o interactuar con una DB directamente desde Next/Remix.
-- Idealmente se debe usar una DB relacional y un ORM ya que queremos evaluar tu capacidad de interactuar con una base de datos.
-- Las fuentes usadas son [Inter](https://fonts.google.com/specimen/Inter) y [Poppins](https://fonts.google.com/specimen/Poppins).
-- El challenge debe ser entregado solamente como Web Mobile, no hace falta que hagas tablet o desktop (a menos que sea algo que quieras hacer).
-
-### Trofeos Sura 🏆
-
-- **¡Magia!** Agrega animaciones y microinteracciónes a la interfaz de usuario.
-- **¡Suena bien!** Añade sonidos a las interacciones en la interfaz de usuario.
-- **¡Con calidad!** Configura las reglas de eslint y prettier.
-- **¡Inbugeable!** Logra más del 70% de cobertura en las pruebas.
-
-### 🏆 Los Trofeos Manija 🏆
-
-- ¡Agrega nuevas features al desafío!
+- 🏆 **¡Magia!** — Framer Motion en transiciones y carrusel
+- 🏆 **¡Suena bien!** — use-sound integrado (placeholders MP3 silenciosos)
+- 🏆 **¡Con calidad!** — ESLint + Prettier + Husky + lint-staged
+- 🏆 **¡Inbugeable!** — 94.5% cobertura, 78 tests (≫ 70%)
+- 🏆 **Manija** — `/movements`, tab bar, swipe carousel, MobileOnlyGate, búsqueda
 
 ---
 
-**Entrega:** Se debe enviar el/los repositorio/s y un link con el proyecto en vivo.
+## Enunciado original
 
----
+> [Especificación API original](https://www.notion.so/Especificaci-n-API-5d8f0216ce6d828d900e012a83251fdf?pvs=21)
+> [Diseño Figma](https://www.figma.com/design/VgRZx1RBY3N3SvrYtY1aK0/SuraChallenge-Figma?node-id=0-1&t=XZaJBOmdnI93xRQx-1)
 
-## Especificación API
+### Historias de usuario
 
-### POST — Login a SuraBank
+- **Login** — Iniciar sesión para acceder a tarjetas y movimientos.
+- **Home — Tarjetas y Balances** — Ver todas mis tarjetas y sus balances.
+- **Home — Movimientos Recientes** — Ver los últimos 5 movimientos.
 
-Debería poder loguearme usando estas credenciales:
+### Endpoints requeridos
 
-- **email:** `user@suragaming.com`
-- **password:** `SURA2026!$`
-
-**Nota:** No hace falta implementar nada relacionado a OAuth o JWT, se puede devolver un token ficticio.
-
-```jsonc
-POST /surabank/login
-
-// REQUEST
-{
-   "email": string,
-   "password": string
-}
-
-// RESPONSE
-{
-    "success": boolean,
-    "data": {
-        "name": string,
-        "token": string
-    }
-}
-```
-
----
-
-### GET — Tarjetas de usuario
-
-Debe obtener todas las tarjetas del usuario. Al menos debe tener:
-
-- Una tarjeta Mastercard
-- Una tarjeta Visa
-
-```jsonc
-// CARDS ENTITY
-{
-    "id": number,
-    "issuer": string,
-    "name": string,
-    "expDate": string,
-    "lastDigits": number,
-    "balance": string,
-    "currency": string
-}
-```
-
-```jsonc
-GET /surabank/cards
-
-// RESPONSE
-{
-    "success": boolean,
-    "data": CARDS[]
-}
-```
-
-**HEADERS:**
-
-- KEY: `Authorization`
-- VALUE: `token`
-
----
-
-### GET — Últimos movimientos del usuario
-
-Debe traer los últimos 5 movimientos del usuario.
-
-```jsonc
-// TRANSACTIONS ENTITY
-{
-    "id": number,
-    "title": string,
-    "amount": string,
-    "transactionType": string, // SUS | CASH_IN | CASH_OUT
-    "date": string
-}
-```
-
-```jsonc
-GET /surabank/movements/last
-
-// RESPONSE
-{
-    "success": boolean,
-    "data": TRANSACTIONS[]
-}
-```
-
-**HEADERS:**
-
-- KEY: `Authorization`
-- VALUE: `token`
-
----
-
-## Enlaces
-
-- **Figma:** https://www.figma.com/design/VgRZx1RBY3N3SvrYtY1aK0/SuraChallenge-Figma?node-id=0-1&p=f&t=2ZHOfpnW45hZ4Az3-0
-- **Repositorio:** https://github.com/horacioparisotto/SuraBank.git
+- `POST /surabank/login` — `{ email, password } → { name, token }`
+- `GET /surabank/cards` (Auth header) — array de Cards
+- `GET /surabank/movements/last` (Auth header) — array de Transactions
