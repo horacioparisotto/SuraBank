@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import { MobileOnlyGate } from "@/components/mobile-only-gate";
 
 function mockMatchMedia(matches: boolean) {
@@ -40,7 +40,7 @@ describe("MobileOnlyGate", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renderiza children Y overlay cuando el viewport NO es mobile", () => {
+  it("renderiza children Y overlay cuando el viewport NO es mobile (post-splash)", async () => {
     mockMatchMedia(false);
     render(
       <MobileOnlyGate>
@@ -48,7 +48,13 @@ describe("MobileOnlyGate", () => {
       </MobileOnlyGate>,
     );
     expect(screen.getByText("HOME-CONTENT")).toBeInTheDocument();
-    expect(screen.getByText(/Esta experiencia está diseñada para mobile/i)).toBeInTheDocument();
+    // el contenido del overlay aparece después del splash brevísimo
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Esta experiencia está diseñada para mobile/i)).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
     expect(screen.getByText("SuraBank")).toBeInTheDocument();
   });
 
@@ -72,20 +78,22 @@ describe("MobileOnlyGate", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("reacciona al cambio de viewport (resize)", () => {
+  it("reacciona al cambio de viewport (resize)", async () => {
     const { listeners, mql } = mockMatchMedia(false);
     render(
       <MobileOnlyGate>
         <p>HOME-CONTENT</p>
       </MobileOnlyGate>,
     );
-    expect(screen.getByText(/Esta experiencia está diseñada para mobile/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Esta experiencia está diseñada para mobile/i)).toBeInTheDocument();
+    });
 
     act(() => {
       mql.matches = true;
       listeners.forEach((l) => l({ matches: true } as MediaQueryListEvent));
     });
-    // children siguen visibles, y el overlay se va con AnimatePresence (puede tardar)
+    // children siguen visibles
     expect(screen.getByText("HOME-CONTENT")).toBeInTheDocument();
   });
 });
