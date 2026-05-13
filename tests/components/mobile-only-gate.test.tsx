@@ -24,9 +24,10 @@ function mockMatchMedia(matches: boolean) {
 describe("MobileOnlyGate", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    document.body.style.overflow = "";
   });
 
-  it("muestra children cuando el viewport ES mobile", () => {
+  it("renderiza children y NO muestra overlay cuando el viewport ES mobile", () => {
     mockMatchMedia(true);
     render(
       <MobileOnlyGate>
@@ -34,18 +35,41 @@ describe("MobileOnlyGate", () => {
       </MobileOnlyGate>,
     );
     expect(screen.getByText("HOME-CONTENT")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Esta experiencia está diseñada para mobile/i),
+    ).not.toBeInTheDocument();
   });
 
-  it("muestra overlay cuando el viewport NO es mobile", () => {
+  it("renderiza children Y overlay cuando el viewport NO es mobile", () => {
     mockMatchMedia(false);
     render(
       <MobileOnlyGate>
         <p>HOME-CONTENT</p>
       </MobileOnlyGate>,
     );
-    expect(screen.queryByText("HOME-CONTENT")).not.toBeInTheDocument();
+    expect(screen.getByText("HOME-CONTENT")).toBeInTheDocument();
     expect(screen.getByText(/Esta experiencia está diseñada para mobile/i)).toBeInTheDocument();
     expect(screen.getByText("SuraBank")).toBeInTheDocument();
+  });
+
+  it("bloquea el scroll del body cuando el overlay está visible", () => {
+    mockMatchMedia(false);
+    render(
+      <MobileOnlyGate>
+        <p>HOME-CONTENT</p>
+      </MobileOnlyGate>,
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+  });
+
+  it("no toca el scroll del body cuando ES mobile", () => {
+    mockMatchMedia(true);
+    render(
+      <MobileOnlyGate>
+        <p>HOME-CONTENT</p>
+      </MobileOnlyGate>,
+    );
+    expect(document.body.style.overflow).toBe("");
   });
 
   it("reacciona al cambio de viewport (resize)", () => {
@@ -55,12 +79,13 @@ describe("MobileOnlyGate", () => {
         <p>HOME-CONTENT</p>
       </MobileOnlyGate>,
     );
-    expect(screen.queryByText("HOME-CONTENT")).not.toBeInTheDocument();
+    expect(screen.getByText(/Esta experiencia está diseñada para mobile/i)).toBeInTheDocument();
 
     act(() => {
       mql.matches = true;
       listeners.forEach((l) => l({ matches: true } as MediaQueryListEvent));
     });
+    // children siguen visibles, y el overlay se va con AnimatePresence (puede tardar)
     expect(screen.getByText("HOME-CONTENT")).toBeInTheDocument();
   });
 });

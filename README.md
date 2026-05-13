@@ -91,13 +91,16 @@ para 3 endpoints, pero refleja cómo escalaría la app con más data.
 
 ### Animaciones y sonidos: **Framer Motion + use-sound**
 
-Los trofeos "¡Magia!" y "¡Suena bien!" requerían algo, así que:
-
-- **Framer Motion**: fade-in en transacciones al cargar, fade-in del form de login,
-  scale-in en el carrusel de tarjetas. Sutil, no intrusivo.
-- **use-sound**: tap, success, error y swipe. Implementación funcional. **Los archivos
-  MP3 en `public/sounds/` son placeholders silenciosos** porque no quise meter audio
-  con copyright. Reemplazándolos por sonidos reales, suenan inmediatamente.
+- **Framer Motion** (trofeo "¡Magia!"): fade-in en transacciones al cargar, fade-in
+  del form de login, scale-in en el carrusel de tarjetas, transición elegante del
+  `MobileOnlyGate` cuando se cruza el breakpoint. Sutil, no intrusivo.
+- **use-sound** (trofeo "¡Suena bien!"): **el cableado está hecho** — los handlers
+  `playTap()`, `playSuccess()`, `playError()` y `playSwipe()` ya están integrados en
+  los componentes (botón Ingresar, navegación del tab bar, swipe del carousel,
+  feedback de login). Decidí no incluir los archivos MP3 reales en el repo por tema
+  de licencia/copyright. Para activarlos: dropear 4 archivos (`tap.mp3`, `success.mp3`,
+  `error.mp3`, `swipe.mp3`) en `public/sounds/` y suenan inmediatamente, sin tocar
+  código.
 
 ### Tests: **Vitest + Testing Library + happy-dom**
 
@@ -133,22 +136,22 @@ El enunciado pedía Login + Home con tarjetas + Home con últimos 5 movimientos.
 
 ## Stack en una tabla
 
-| Capa          | Elección                                                            |
-| ------------- | ------------------------------------------------------------------- |
-| Framework     | Next.js 16 (App Router, Turbopack, React 19) + TypeScript           |
-| UI            | Tailwind v4 + Shadcn (base-nova) + Lucide                           |
-| Auth          | Cookie httpOnly + token ficticio + middleware (Next 16 `proxy.ts`)  |
-| DB dev        | SQLite + Prisma 6                                                   |
-| DB prod       | Turso libSQL + Prisma 6 (driverAdapters) + `@libsql/client@0.15.15` |
-| Cache prod    | Upstash Redis (60s TTL, fallback transparente)                      |
-| Forms         | React Hook Form + Zod                                               |
-| Data fetching | TanStack Query                                                      |
-| Animaciones   | Framer Motion                                                       |
-| Sonidos       | use-sound (placeholders silenciosos en `public/sounds/`)            |
-| Tests         | Vitest + Testing Library + happy-dom — 94.5% cobertura              |
-| Calidad       | ESLint + Prettier + lint-staged + Husky                             |
-| Fuentes       | Inter + Poppins via `next/font`                                     |
-| Deploy        | Vercel + Turso + Upstash                                            |
+| Capa          | Elección                                                                  |
+| ------------- | ------------------------------------------------------------------------- |
+| Framework     | Next.js 16 (App Router, Turbopack, React 19) + TypeScript                 |
+| UI            | Tailwind v4 + Shadcn (base-nova) + Lucide                                 |
+| Auth          | Cookie httpOnly + token ficticio + middleware (Next 16 `proxy.ts`)        |
+| DB dev        | SQLite + Prisma 6                                                         |
+| DB prod       | Turso libSQL + Prisma 6 (driverAdapters) + `@libsql/client@0.15.15`       |
+| Cache prod    | Upstash Redis (60s TTL, fallback transparente)                            |
+| Forms         | React Hook Form + Zod                                                     |
+| Data fetching | TanStack Query                                                            |
+| Animaciones   | Framer Motion                                                             |
+| Sonidos       | use-sound — cableado completo, listo para agregar MP3 en `public/sounds/` |
+| Tests         | Vitest + Testing Library + happy-dom — 94.5% cobertura                    |
+| Calidad       | ESLint + Prettier + lint-staged + Husky                                   |
+| Fuentes       | Inter + Poppins via `next/font`                                           |
+| Deploy        | Vercel + Turso + Upstash                                                  |
 
 ---
 
@@ -230,7 +233,7 @@ Deploy.
 ## Trofeos obtenidos
 
 - 🏆 **¡Magia!** — Framer Motion en transiciones y carrusel
-- 🏆 **¡Suena bien!** — use-sound integrado (placeholders MP3 silenciosos)
+- 🏆 **¡Suena bien!** — use-sound integrado en login, navegación y swipe (audio listo para drop-in en `public/sounds/`)
 - 🏆 **¡Con calidad!** — ESLint + Prettier + Husky + lint-staged
 - 🏆 **¡Inbugeable!** — 94.5% cobertura, 78 tests (≫ 70%)
 - 🏆 **Manija** — `/movements`, tab bar, swipe carousel, MobileOnlyGate, búsqueda
