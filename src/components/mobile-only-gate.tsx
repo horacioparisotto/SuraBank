@@ -63,25 +63,28 @@ export function MobileOnlyGate({ children }: { children: ReactNode }) {
             transition={{ duration: 0.35, ease: "easeOut" }}
             className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-[#1e40ff] to-[#0b1f8a] px-8 text-center text-white"
           >
-            {/* Splash: barra de progreso visible solo durante el primer paint desktop */}
+            {/* Splash: texto + barra de progreso centrados, solo durante el primer paint desktop */}
             <AnimatePresence>
               {!showContent && (
                 <motion.div
-                  key="splash-bar"
+                  key="splash"
                   initial={false}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute bottom-16 h-0.5 w-40 overflow-hidden rounded-full bg-white/15"
+                  className="flex flex-col items-center gap-4"
                 >
-                  <motion.div
-                    initial={{ x: "-100%" }}
-                    animate={{ x: "100%" }}
-                    transition={{
-                      duration: SPLASH_DURATION_MS / 1000,
-                      ease: "easeInOut",
-                    }}
-                    className="h-full w-1/2 bg-white/70"
-                  />
+                  <p className="text-xs tracking-[0.3em] text-white/70 uppercase">Cargando</p>
+                  <div className="h-0.5 w-40 overflow-hidden rounded-full bg-white/15">
+                    <motion.div
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "100%" }}
+                      transition={{
+                        duration: SPLASH_DURATION_MS / 1000,
+                        ease: "easeInOut",
+                      }}
+                      className="h-full w-1/2 bg-white/70"
+                    />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
