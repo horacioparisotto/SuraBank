@@ -71,55 +71,54 @@ Las APIs aceptan tanto la cookie httpOnly como el header `Authorization: <token>
 
 ### Deploy a Vercel (paso a paso)
 
-El código ya soporta DB cloud y cache. Activá ambos seteando env vars; si faltan, hace fallback transparente (cache desactivado, DB local).
+El código soporta DB cloud (Turso) y cache (Upstash). Si las env vars no están seteadas, hace fallback transparente a SQLite local sin cache — no rompe.
 
-#### 1) Turso (libSQL serverless SQLite — free tier generoso)
+#### 1) Turso (libSQL serverless SQLite, free tier)
 
-1. Creá cuenta en https://turso.tech
-2. Instalá la CLI: `curl -sSfL https://get.tur.so/install.sh | bash`
-3. Login: `turso auth signup` (o `login`)
-4. Creá la DB:
-   ```bash
-   turso db create surabank
-   turso db show surabank --url               # → libsql://surabank-<tu-org>.turso.io
-   turso db tokens create surabank             # → eyJhbGciOiJF...
-   ```
-5. Aplicá el schema:
-   ```bash
-   TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..." \
-     DATABASE_URL="file:./dummy.db" \
-     pnpm exec prisma db push
-   ```
-6. Sembrá la DB remota:
-   ```bash
-   TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..." \
-     pnpm db:seed:remote
-   ```
+```bash
+curl -sSfL https://get.tur.so/install.sh | bash   # instala CLI
+turso auth signup                                  # cuenta (GitHub/Google)
+turso db create surabank
+turso db show surabank --url                       # → TURSO_DATABASE_URL
+turso db tokens create surabank                    # → TURSO_AUTH_TOKEN
+```
+
+Aplicá el schema y sembrá la DB remota (corré ambos desde la raíz del repo):
+
+```bash
+turso db shell surabank < prisma/migrations/20260512234333_init/migration.sql
+
+TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..." \
+  pnpm db:seed:remote
+```
+
+> Nota: el script `db:seed:remote` usa el adapter `@prisma/adapter-libsql` y crea el user de prueba + 2 tarjetas + 8 transacciones.
 
 #### 2) Upstash Redis (opcional, free tier)
 
-1. Creá cuenta en https://upstash.com
-2. Create Database → Region cercano a tu Vercel region.
+1. https://upstash.com → Sign up → **Create Database**.
+2. Region cercano a la región de Vercel (ej: US-East).
 3. Copiá `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
-
-> Si no setás estas vars, la app sigue funcionando — el cache layer es best-effort.
 
 #### 3) Vercel
 
-1. Conectá el repo en https://vercel.com/new
-2. Framework: Next.js (auto-detect).
-3. Build command default: `next build`.
+1. https://vercel.com/new → importá el repo `SuraBank`.
+2. Framework Preset: **Next.js** (auto).
+3. Root Directory: `./` (default).
 4. **Environment Variables** (Production + Preview):
-   ```
-   DATABASE_URL=file:./dummy.db
-   AUTH_COOKIE_NAME=surabank_token
-   TURSO_DATABASE_URL=libsql://surabank-<tu-org>.turso.io
-   TURSO_AUTH_TOKEN=<token>
-   UPSTASH_REDIS_REST_URL=https://<id>.upstash.io       # opcional
-   UPSTASH_REDIS_REST_TOKEN=<token>                     # opcional
-   ```
-   `DATABASE_URL` es dummy en prod — Prisma lo necesita en build time, pero el cliente usa el adapter libSQL si `TURSO_DATABASE_URL` está presente.
-5. Deploy. Primera URL queda live en `https://surabank-*.vercel.app`.
+
+   | Key                        | Value                                         |
+   | -------------------------- | --------------------------------------------- |
+   | `DATABASE_URL`             | `file:./dummy.db`                             |
+   | `AUTH_COOKIE_NAME`         | `surabank_token`                              |
+   | `TURSO_DATABASE_URL`       | `libsql://surabank-<tu-org>.turso.io`         |
+   | `TURSO_AUTH_TOKEN`         | `eyJ...` (output de `turso db tokens create`) |
+   | `UPSTASH_REDIS_REST_URL`   | `https://<id>.upstash.io` (opcional)          |
+   | `UPSTASH_REDIS_REST_TOKEN` | `<token>` (opcional)                          |
+
+   > `DATABASE_URL` solo se usa para que Prisma se inicialice en build time; en runtime el cliente detecta `TURSO_DATABASE_URL` y usa el adapter libSQL automáticamente.
+
+5. **Deploy**. La URL queda live en `https://surabank-*.vercel.app`.
 
 ---
 
