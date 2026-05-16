@@ -256,3 +256,4 @@ Deploy.
 - `POST /surabank/login` — `{ email, password } → { name, token }`
 - `GET /surabank/cards` (Auth header) — array de Cards
 - `GET /surabank/movements/last` (Auth header) — array de Transactions
+- `GET /surabank/movements` (Auth header) — array completo de Transactions
